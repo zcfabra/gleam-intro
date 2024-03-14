@@ -1,14 +1,30 @@
 import wisp.{type Request, type Response}
 import gleam/string_builder
 import gleam/http.{Get, Post}
+import gleam/result.{try}
+import gleam/pgo
 import app/web
 import app/user
+
+type Context {
+  Context(db: pgo.Connection)
+}
 
 /// The HTTP request handler- your application!
 /// 
 pub fn handle_request(req: Request) -> Response {
   // Apply the middleware stack for this request/response.
   use _req <- web.middleware(req)
+  let db =
+    pgo.connect(
+      pgo.Config(
+        ..pgo.default_config(),
+        host: "localhost",
+        database: "my_database",
+        pool_size: 15,
+      ),
+    )
+  let ctx = Context(db: db)
 
   // pattern match to assign handler functions to various routes -- COOL! 
   case wisp.path_segments(req) {
@@ -20,18 +36,18 @@ pub fn handle_request(req: Request) -> Response {
   }
 }
 
-fn create_user(req: Request) -> Response {
-  use <- wisp.require_method(req, Get)
-  use json <- wisp.require_json(req)
+fn create_user(req: Request, ctx: Context) -> Response {
   let result = {
-    use user_data <- try(user.decode(json))
-    use inserted_row <- try(user.insert(ctx.db, user_data))
-    Ok(user.row_to_json(inserted_row))
+    use <- wisp.require_method(req, Get)
+    use json <- wisp.require_json(req)
+    use user_insert <- try(user.decode(json))
+    use rec <- try(user.insert(user_insert, ctx.db))
+    use user_model <- try(user.row_to_model(rec))
   }
 
   case result {
     Ok(user_json) -> wisp.json_response(user_json, 200)
-    Error(_) -> wisp.unprocessable_entity()
+    Error(err) -> error_to_response(err)
   }
 }
 
