@@ -29,6 +29,7 @@ packages = [
 [requirements]
 gleam_erlang = { version = "~> 0.24" }
 gleam_http = { version = "~> 3.6" }
+gleam_json = { version = "~> 1.0"}
 gleam_pgo = { version = "~> 0.6" }
 gleam_stdlib = { version = "~> 0.34 or ~> 1.0" }
 gleeunit = { version = "~> 1.0" }

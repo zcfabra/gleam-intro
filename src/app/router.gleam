@@ -1,10 +1,13 @@
 import wisp.{type Request, type Response}
 import gleam/string_builder
-import gleam/http.{Get, Post}
+import gleam/http.{Get}
+import gleam/option.{Some}
 import gleam/result.{try}
 import gleam/pgo
+import gleam/io
 import app/web
 import app/user
+import app/utils
 import app/error
 
 type Context {
@@ -21,7 +24,8 @@ pub fn handle_request(req: Request) -> Response {
       pgo.Config(
         ..pgo.default_config(),
         host: "localhost",
-        database: "my_database",
+        password: Some("postgres"),
+        database: "grill",
         pool_size: 15,
       ),
     )
@@ -33,7 +37,28 @@ pub fn handle_request(req: Request) -> Response {
     [] -> home_page(req)
     ["ping"] -> ping(req)
     ["create", "user"] -> create_user(req, ctx)
+    ["user", user_id] -> get_user(req, user_id, ctx)
     _ -> wisp.not_found()
+  }
+}
+
+fn get_user(req: Request, user_id: String, ctx: Context) -> Response {
+  io.debug(user_id)
+  use <- wisp.require_method(req, Get)
+
+  let result = {
+    user.get_user(user_id, ctx.db)
+    |> try(utils.validate_row_singleton)
+    |> try(user.row_to_model)
+  }
+  io.debug(result)
+  io.debug("C")
+  case result {
+    Ok(res) ->
+      user.jsonify(res)
+      |> string_builder.from_string
+      |> wisp.json_response(200)
+    Error(err) -> error.error_to_response(err)
   }
 }
 
@@ -44,6 +69,7 @@ fn create_user(req: Request, ctx: Context) -> Response {
   let result =
     user.decode(json)
     |> try(user.insert(_, ctx.db))
+    |> try(utils.validate_row_singleton)
     |> try(user.row_to_model)
 
   case result {

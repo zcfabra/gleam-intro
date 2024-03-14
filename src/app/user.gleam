@@ -1,5 +1,6 @@
 import gleam/result
 import gleam/pgo
+import gleam/io
 import gleam/json
 import gleam/dynamic.{type Dynamic}
 import app/error.{type AppError}
@@ -57,9 +58,43 @@ pub fn insert(
 }
 
 pub fn row_to_model(
-  row: pgo.Returned(#(String, String, String)),
+  row: #(String, String, String),
 ) -> Result(UserModel, AppError) {
+  io.debug(row)
   dynamic.from(row)
-  |> dynamic.decode3(UserModel, dynamic.string, dynamic.string, dynamic.string)
+  |> dynamic.decode3(
+    UserModel,
+    dynamic.element(0, dynamic.string),
+    dynamic.element(0, dynamic.string),
+    dynamic.element(2, dynamic.string),
+  )
   |> result.replace_error(error.AppBuildModelError)
+  // |> result.replace_error(error.AppBuildModelError)
+}
+
+pub fn get_user(
+  user_id: String,
+  db,
+) -> Result(pgo.Returned(#(String, String, String)), AppError) {
+  let query =
+    "
+    SELECT user_id::TEXT, name, email 
+    FROM individual.user_account
+    WHERE name = $1;
+    "
+  let return_type =
+    dynamic.tuple3(dynamic.string, dynamic.string, dynamic.string)
+
+  pgo.execute(query, db, [pgo.text(user_id)], return_type)
+  |> result.replace_error(error.AppQueryError)
+}
+
+pub fn jsonify(user_model: UserModel) -> String {
+  json.to_string(
+    json.object([
+      #("user_id", json.string(user_model.user_id)),
+      #("name", json.string(user_model.name)),
+      #("email", json.string(user_model.email)),
+    ]),
+  )
 }

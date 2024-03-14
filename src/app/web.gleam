@@ -22,7 +22,7 @@ pub fn middleware(
   use <- wisp.log_request(req)
 
   // Return a default 500 response if the request handler crashes.
-  use <- wisp.rescue_crashes
+  // use <- wisp.rescue_crashes
 
   // Rewrite HEAD requests to GET requests and return an empty body.
   use req <- wisp.handle_head(req)
