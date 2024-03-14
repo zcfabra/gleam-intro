@@ -5,6 +5,7 @@ import gleam/result.{try}
 import gleam/pgo
 import app/web
 import app/user
+import app/error
 
 type Context {
   Context(db: pgo.Connection)
@@ -31,24 +32,22 @@ pub fn handle_request(req: Request) -> Response {
     // Matches '/'
     [] -> home_page(req)
     ["ping"] -> ping(req)
-    ["create", "user"] -> create_user(req)
+    ["create", "user"] -> create_user(req, ctx)
     _ -> wisp.not_found()
   }
 }
 
 fn create_user(req: Request, ctx: Context) -> Response {
+  use <- wisp.require_method(req, Get)
+  use json <- wisp.require_json(req)
+
   let result = {
-    use <- wisp.require_method(req, Get)
-    use json <- wisp.require_json(req)
     use user_insert <- try(user.decode(json))
     use rec <- try(user.insert(user_insert, ctx.db))
-    use user_model <- try(user.row_to_model(rec))
+    user.row_to_model(rec)
   }
-
-  case result {
-    Ok(user_json) -> wisp.json_response(user_json, 200)
-    Error(err) -> error_to_response(err)
-  }
+  use _model <- error.process_result(result)
+  wisp.ok()
 }
 
 fn home_page(req: Request) -> Response {
