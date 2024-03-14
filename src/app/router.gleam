@@ -41,13 +41,15 @@ fn create_user(req: Request, ctx: Context) -> Response {
   use <- wisp.require_method(req, Get)
   use json <- wisp.require_json(req)
 
-  let result = {
-    use user_insert <- try(user.decode(json))
-    use rec <- try(user.insert(user_insert, ctx.db))
-    user.row_to_model(rec)
+  let result =
+    user.decode(json)
+    |> try(user.insert(_, ctx.db))
+    |> try(user.row_to_model)
+
+  case result {
+    Ok(_) -> wisp.ok()
+    Error(err) -> error.error_to_response(err)
   }
-  use _model <- error.process_result(result)
-  wisp.ok()
 }
 
 fn home_page(req: Request) -> Response {
