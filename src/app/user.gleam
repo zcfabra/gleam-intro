@@ -1,6 +1,5 @@
 import gleam/result
 import gleam/pgo
-import gleam/io
 import gleam/json
 import gleam/dynamic.{type Dynamic}
 import app/error.{type AppError}
@@ -60,7 +59,6 @@ pub fn insert(
 pub fn row_to_model(
   row: #(String, String, String),
 ) -> Result(UserModel, AppError) {
-  io.debug(row)
   dynamic.from(row)
   |> dynamic.decode3(
     UserModel,
@@ -86,7 +84,7 @@ pub fn get_user(
     dynamic.tuple3(dynamic.string, dynamic.string, dynamic.string)
 
   pgo.execute(query, db, [pgo.text(user_id)], return_type)
-  |> result.replace_error(error.AppQueryError(message: "Error inserting"))
+  |> result.replace_error(error.AppQueryError(message: "Error retrieving user"))
 }
 
 pub fn jsonify(user_model: UserModel) -> String {

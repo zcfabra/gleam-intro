@@ -1,35 +1,17 @@
 import wisp.{type Request, type Response}
 import gleam/string_builder
 import gleam/http.{Get}
-import gleam/option.{Some}
 import gleam/result.{try}
-import gleam/pgo
-import gleam/io
-import app/web
+import app/web.{type Context}
 import app/user
 import app/utils.{validate_uuid}
 import app/error
 
-type Context {
-  Context(db: pgo.Connection)
-}
-
 /// The HTTP request handler- your application!
 /// 
-pub fn handle_request(req: Request) -> Response {
+pub fn handle_request(req: Request, ctx: Context) -> Response {
   // Apply the middleware stack for this request/response.
   use _req <- web.middleware(req)
-  let db =
-    pgo.connect(
-      pgo.Config(
-        ..pgo.default_config(),
-        host: "localhost",
-        password: Some("postgres"),
-        database: "grill",
-        pool_size: 15,
-      ),
-    )
-  let ctx = Context(db: db)
 
   // pattern match to assign handler functions to various routes -- COOL! 
   case wisp.path_segments(req) {
@@ -43,7 +25,6 @@ pub fn handle_request(req: Request) -> Response {
 }
 
 fn get_user(req: Request, user_id: String, ctx: Context) -> Response {
-  io.debug(user_id)
   use <- wisp.require_method(req, Get)
 
   let result = {
@@ -52,8 +33,6 @@ fn get_user(req: Request, user_id: String, ctx: Context) -> Response {
     |> try(utils.validate_row_singleton)
     |> try(user.row_to_model)
   }
-  io.debug(result)
-  io.debug("C")
   case result {
     Ok(res) ->
       user.jsonify(res)
