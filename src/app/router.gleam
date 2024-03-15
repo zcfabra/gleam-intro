@@ -7,7 +7,7 @@ import gleam/pgo
 import gleam/io
 import app/web
 import app/user
-import app/utils
+import app/utils.{validate_uuid}
 import app/error
 
 type Context {
@@ -47,7 +47,8 @@ fn get_user(req: Request, user_id: String, ctx: Context) -> Response {
   use <- wisp.require_method(req, Get)
 
   let result = {
-    user.get_user(user_id, ctx.db)
+    validate_uuid(user_id)
+    |> try(user.get_user(_, ctx.db))
     |> try(utils.validate_row_singleton)
     |> try(user.row_to_model)
   }

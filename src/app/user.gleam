@@ -32,7 +32,7 @@ pub fn decode(json: Dynamic) -> Result(CreateUser, AppError) {
       dynamic.field("email", dynamic.string),
     )
   decoder(json)
-  |> result.replace_error(error.AppDecodeError)
+  |> result.replace_error(error.AppDecodeError("Invalid inputs"))
 }
 
 pub fn insert(
@@ -54,7 +54,7 @@ pub fn insert(
     [pgo.text(user.name), pgo.text(user.email)],
     return_type,
   )
-  |> result.replace_error(error.AppQueryError)
+  |> result.replace_error(error.AppQueryError("Unable to create user"))
 }
 
 pub fn row_to_model(
@@ -68,7 +68,7 @@ pub fn row_to_model(
     dynamic.element(0, dynamic.string),
     dynamic.element(2, dynamic.string),
   )
-  |> result.replace_error(error.AppBuildModelError)
+  |> result.replace_error(error.AppBuildModelError("Data Error"))
   // |> result.replace_error(error.AppBuildModelError)
 }
 
@@ -80,13 +80,13 @@ pub fn get_user(
     "
     SELECT user_id::TEXT, name, email 
     FROM individual.user_account
-    WHERE name = $1;
+    WHERE user_id = ($1)::UUID;
     "
   let return_type =
     dynamic.tuple3(dynamic.string, dynamic.string, dynamic.string)
 
   pgo.execute(query, db, [pgo.text(user_id)], return_type)
-  |> result.replace_error(error.AppQueryError)
+  |> result.replace_error(error.AppQueryError(message: "Error inserting"))
 }
 
 pub fn jsonify(user_model: UserModel) -> String {
